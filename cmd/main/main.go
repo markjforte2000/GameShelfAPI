@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/markjforte2000/GameShelfAPI/internal/igdb_api"
+	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"os"
 	"strings"
 )
@@ -10,13 +10,8 @@ import (
 func main() {
 	id, secret := getClientIDAndSecret()
 	client := igdb_api.NewAuthorizedClient(id, secret)
-	game := client.FindGame("Super Mario Bros", "1985")
-	fmt.Printf("%+v\n", game)
-	fmt.Printf("Cover: %+v\n", game.Cover)
-	fmt.Printf("Involved Companies: ")
-	for _, involvedCompany := range game.InvolvedCompanies {
-		fmt.Printf("%+v ", involvedCompany)
-	}
+	game := client.GetGameData("Super Mario Bros", "1985")
+	util.PrettyPrintGame(game)
 }
 
 func getClientIDAndSecret() (string, string) {

@@ -5,7 +5,6 @@ import (
 	"github.com/Henry-Sarabia/apicalypse"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,15 +34,14 @@ type gameIntermediate struct {
 	Genres      []int  `json:"genres"`
 }
 
-// CLIENT METHODS
-
-func (client *basicAuthClient) FindGame(title string, year string) *game.Game {
+func (client *basicAuthClient) GetGameData(title string, year string) *game.Game {
 	request := client.constructGameRequest(title, year)
 	httpClient := new(http.Client)
 	response, err := httpClient.Do(request)
 	if err != nil {
 		log.Fatalf("Failed to send game request: %v\n", err)
 	}
+	util.PrettyPrintHTTPResponse(response)
 	g := client.parseGameResponse(response)
 	return g
 }
@@ -74,8 +72,48 @@ func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermedi
 		Cover:             client.getCover(intermediate),
 		ReleaseDate:       util.UnixTimestampToDate(intermediate.ReleaseDate),
 		InvolvedCompanies: client.getInvolvedCompanies(intermediate),
+		Genres:            client.getGenres(intermediate),
 	}
 	return &g
+}
+
+func (client *basicAuthClient) getGenres(intermediate *gameIntermediate) []*game.Genre {
+	request := client.constructGenresRequest(intermediate.Genres)
+	httpClient := new(http.Client)
+	response, err := httpClient.Do(request)
+	if err != nil {
+		log.Fatalf("Unable to send genre request: %v\n", err)
+	}
+	util.PrettyPrintHTTPResponse(response)
+	var genres []*game.Genre
+	err = util.ParseHTTPResponse(response, &genres)
+	if err != nil {
+		log.Fatalf("Error decoding genre response: %v\n", err)
+	}
+	if len(genres) == 0 {
+		return nil
+	}
+	return genres
+}
+
+func (client *basicAuthClient) constructGenresRequest(genreIDs []int) *http.Request {
+	whereTerms := ""
+	for _, genreID := range genreIDs {
+		whereTerms += fmt.Sprintf(" | id = %v", genreID)
+	}
+	whereTerms = whereTerms[3:]
+	request, err := apicalypse.NewRequest(
+		"POST",
+		"https://api.igdb.com/v4/genres",
+		apicalypse.Fields("name"),
+		apicalypse.Where(whereTerms),
+	)
+	if err != nil {
+		log.Fatalf("Error creating genre request: %v\n", err)
+	}
+	client.addIGDBHeaders(request)
+	util.PrettyPrintHTTPRequest(request)
+	return request
 }
 
 func (client *basicAuthClient) getInvolvedCompanies(intermediate *gameIntermediate) []*game.InvolvedCompany {
@@ -253,16 +291,4 @@ func (client *basicAuthClient) addIGDBHeaders(request *http.Request) {
 	request.Header.Set("Client-ID", client.clientID)
 	request.Header.Set("Authorization", bearer)
 	request.Header.Set("Accept", "application/json")
-}
-
-func (client *basicAuthClient) constructAPIRequest(endpoint string,
-	body io.Reader) (*http.Request, error) {
-	bearer := fmt.Sprintf("Bearer %v", client.accessToken.accessToken)
-	request, err := util.CreateRequestWithHeaders(endpoint, "POST",
-		map[string]string{
-			"Client-ID":     client.clientID,
-			"Authorization": bearer,
-			"Accept":        "application/json",
-		}, body)
-	return request, err
 }
