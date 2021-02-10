@@ -1,0 +1,8 @@
+Pong,1972
+Super Mario Bros,1985
+The Legend of Zelda,1986
+Pokemon Red,1996
+Super Smash Bros Melee,2001
+Metal Gear Solid 2: Sons of Liberty,2001
+Batman: Arkham Asylum,2009
+Legend of Zelda: Breath of the Wild,2017
