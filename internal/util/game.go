@@ -6,10 +6,14 @@ import (
 	"log"
 )
 
-func PrettyPrintGame(g *game.Game) {
+func GameToPrettyString(g *game.Game) string {
 	out, err := json.MarshalIndent(g, "", "     ")
 	if err != nil {
 		log.Fatalf("Error marshaling game into json: %v\n", err)
 	}
-	log.Printf("Game:\n%v\n", string(out))
+	return string(out)
+}
+
+func PrettyPrintGame(g *game.Game) {
+	log.Printf("Game:\n%v\n", GameToPrettyString(g))
 }

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/Henry-Sarabia/apicalypse"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
+	"github.com/markjforte2000/GameShelfAPI/internal/scheduling"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -16,6 +18,11 @@ type basicAuthClient struct {
 	clientID     string
 	clientSecret string
 	accessToken  *token
+	scheduler    scheduling.Scheduler
+}
+
+type basicWaiter struct {
+	lock *sync.Mutex
 }
 
 type token struct {
@@ -32,68 +39,79 @@ type gameIntermediate struct {
 	Summary     string `json:"summary"`
 	CoverID     int    `json:"cover"`
 	Genres      []int  `json:"genres"`
+	waitGroup   *sync.WaitGroup
+}
+
+func (waiter *basicWaiter) Wait() {
+	waiter.lock.Lock()
+	waiter.lock.Unlock()
+}
+
+func (client *basicAuthClient) AsyncGetGameDate(title string,
+	year string) (AsyncWaiter, *game.Game) {
+	g := new(game.Game)
+	waiter := &basicWaiter{
+		lock: new(sync.Mutex),
+	}
+	go client.asyncGetGameDataHelper(title, year, g)
+	return waiter, g
+}
+
+func (client *basicAuthClient) init() {
+	client.scheduler = scheduling.NewScheduler()
 }
 
 func (client *basicAuthClient) GetGameData(title string, year string) *game.Game {
-	request := client.constructGameRequest(title, year)
-	httpClient := new(http.Client)
-	response, err := httpClient.Do(request)
-	if err != nil {
-		log.Fatalf("Failed to send game request: %v\n", err)
-	}
-	util.PrettyPrintHTTPResponse(response)
-	g := client.parseGameResponse(response)
+	g := new(game.Game)
+	client.parseGameResponse(client.getGameList(title, year), g)
 	return g
 }
 
-func (client *basicAuthClient) parseGameResponse(response *http.Response) *game.Game {
+func (client *basicAuthClient) asyncGetGameDataHelper(title string,
+	year string, g *game.Game) {
+	client.parseGameResponse(client.getGameList(title, year), g)
+}
+
+func (client *basicAuthClient) getGameList(title string, year string) []gameIntermediate {
+	request := client.constructGameRequest(title, year)
 	var gameList []gameIntermediate
-	err := util.ParseHTTPResponse(response, &gameList)
-	if err != nil {
-		log.Fatalf("Failed to decode game search response: %v\n", err)
+	response := client.scheduler.ScheduleHTTPRequest(request, &gameList)
+	response.Wait()
+	if response.Error() != nil {
+		log.Fatalf("Failed to do game request: %v\n", response.Error())
 	}
-	err = response.Body.Close()
-	if err != nil {
-		log.Fatalf("Error closing game request response: %v\n", err)
-	}
+	return gameList
+}
+
+func (client *basicAuthClient) parseGameResponse(gameList []gameIntermediate, g *game.Game) {
 	if len(gameList) == 0 {
-		return nil
+		return
 	}
 	topGame := gameList[0]
-	g := client.translateIntermediate(&topGame)
-	return g
+	topGame.waitGroup = new(sync.WaitGroup)
+	client.translateIntermediate(&topGame, g)
 }
 
-func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermediate) *game.Game {
-	g := game.Game{
-		Title:             intermediate.Name,
-		ID:                intermediate.ID,
-		Summary:           intermediate.Summary,
-		Cover:             client.getCover(intermediate),
-		ReleaseDate:       util.UnixTimestampToDate(intermediate.ReleaseDate),
-		InvolvedCompanies: client.getInvolvedCompanies(intermediate),
-		Genres:            client.getGenres(intermediate),
-	}
-	return &g
+func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermediate, g *game.Game) {
+	g.Title = intermediate.Name
+	g.ID = intermediate.ID
+	g.Summary = intermediate.Summary
+	g.ReleaseDate = util.UnixTimestampToDate(intermediate.ReleaseDate)
+	intermediate.waitGroup.Add(3)
+	go client.loadGenres(intermediate, g)
+	go client.loadInvolvedCompanies(intermediate, g)
+	go client.loadCover(intermediate, g)
+	intermediate.waitGroup.Wait()
 }
 
-func (client *basicAuthClient) getGenres(intermediate *gameIntermediate) []*game.Genre {
+func (client *basicAuthClient) loadGenres(intermediate *gameIntermediate, g *game.Game) {
 	request := client.constructGenresRequest(intermediate.Genres)
-	httpClient := new(http.Client)
-	response, err := httpClient.Do(request)
-	if err != nil {
-		log.Fatalf("Unable to send genre request: %v\n", err)
+	response := client.scheduler.ScheduleHTTPRequest(request, &g.Genres)
+	response.Wait()
+	if response.Error() != nil {
+		log.Fatalf("Unable to execute genre request: %v\n", response.Error())
 	}
-	util.PrettyPrintHTTPResponse(response)
-	var genres []*game.Genre
-	err = util.ParseHTTPResponse(response, &genres)
-	if err != nil {
-		log.Fatalf("Error decoding genre response: %v\n", err)
-	}
-	if len(genres) == 0 {
-		return nil
-	}
-	return genres
+	intermediate.waitGroup.Done()
 }
 
 func (client *basicAuthClient) constructGenresRequest(genreIDs []int) *http.Request {
@@ -116,10 +134,11 @@ func (client *basicAuthClient) constructGenresRequest(genreIDs []int) *http.Requ
 	return request
 }
 
-func (client *basicAuthClient) getInvolvedCompanies(intermediate *gameIntermediate) []*game.InvolvedCompany {
+func (client *basicAuthClient) loadInvolvedCompanies(intermediate *gameIntermediate, g *game.Game) {
 	companies := client.getCompanyIDs(intermediate.Developers)
 	client.populateInvolvedCompanyNames(companies)
-	return companies
+	g.InvolvedCompanies = companies
+	intermediate.waitGroup.Done()
 }
 
 func (client *basicAuthClient) populateInvolvedCompanyNames(companies []*game.InvolvedCompany) {
@@ -128,16 +147,11 @@ func (client *basicAuthClient) populateInvolvedCompanyNames(companies []*game.In
 		Name string `json:"name"`
 	}
 	request := client.constructCompanyRequest(companies)
-	httpClient := new(http.Client)
-	response, err := httpClient.Do(request)
-	if err != nil {
-		log.Fatalf("Unable to send company name request: %v\n", err)
-	}
-	util.PrettyPrintHTTPResponse(response)
 	var rawCompanies []*nameResponse
-	err = util.ParseHTTPResponse(response, &rawCompanies)
-	if err != nil {
-		log.Fatalf("Error decoding company name response: %v\n", err)
+	response := client.scheduler.ScheduleHTTPRequest(request, &rawCompanies)
+	response.Wait()
+	if response.Error() != nil {
+		log.Fatalf("Unable to execute company name request: %v\n", response.Error())
 	}
 	for _, rawCompany := range rawCompanies {
 		for _, company := range companies {
@@ -176,16 +190,11 @@ func (client *basicAuthClient) getCompanyIDs(involvedCompanyIDs []int) []*game.I
 		Publisher bool `json:"publisher"`
 	}
 	request := client.constructInvolvedCompanyRequest(involvedCompanyIDs)
-	httpClient := new(http.Client)
-	response, err := httpClient.Do(request)
-	if err != nil {
-		log.Fatalf("Unable to send involved companies request: %v\n", err)
-	}
-	util.PrettyPrintHTTPResponse(response)
 	var rawCompanies []*companyResponse
-	err = util.ParseHTTPResponse(response, &rawCompanies)
-	if err != nil {
-		log.Fatalf("Error decoding involved company response: %v\n", err)
+	response := client.scheduler.ScheduleHTTPRequest(request, &rawCompanies)
+	response.Wait()
+	if response.Error() != nil {
+		log.Fatalf("Unable to send involved companies request: %v\n", response.Error())
 	}
 	var companies []*game.InvolvedCompany
 	for _, rawCompany := range rawCompanies {
@@ -218,17 +227,13 @@ func (client *basicAuthClient) constructInvolvedCompanyRequest(involvedCompanyID
 	return request
 }
 
-func (client *basicAuthClient) getCover(intermediate *gameIntermediate) *game.Artwork {
+func (client *basicAuthClient) loadCover(intermediate *gameIntermediate, g *game.Game) {
 	request := client.constructArtworkRequest(intermediate.CoverID)
-	httpClient := new(http.Client)
-	response, err := httpClient.Do(request)
-	if err != nil {
-		log.Fatalf("Unable to send artwork request: %v\n", err)
-	}
 	var covers []game.Artwork
-	err = util.ParseHTTPResponse(response, &covers)
-	if err != nil {
-		log.Fatalf("Failed to parse artwork response: %v\n", err)
+	response := client.scheduler.ScheduleHTTPRequest(request, &covers)
+	response.Wait()
+	if response.Error() != nil {
+		log.Fatalf("Unable to send artwork request: %v\n", response.Error())
 	}
 	if len(covers) == 0 {
 		log.Fatalf("Unable to find artwork for game %v\n", intermediate.Name)
@@ -236,7 +241,8 @@ func (client *basicAuthClient) getCover(intermediate *gameIntermediate) *game.Ar
 	cover := covers[0]
 	// replace thumbnail with full size artwork
 	cover.URL = strings.Replace(cover.URL, "t_thumb", "t_cover_big", 1)
-	return &cover
+	g.Cover = &cover
+	intermediate.waitGroup.Done()
 }
 
 func (client *basicAuthClient) constructArtworkRequest(artworkID int) *http.Request {
@@ -265,7 +271,7 @@ func (client *basicAuthClient) constructGameRequest(title string, year string) *
 			"involved_companies", "summary", "cover"),
 		apicalypse.Search("", title),
 		apicalypse.Where(
-			fmt.Sprintf("first_release_date > %v & first_release_date < %v",
+			fmt.Sprintf("first_release_date > %v & first_release_date < %v & category = 0",
 				startTimestamp, endTimestamp)),
 	)
 	client.addIGDBHeaders(request)
