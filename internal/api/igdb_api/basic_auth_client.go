@@ -3,9 +3,9 @@ package igdb_api
 import (
 	"fmt"
 	"github.com/Henry-Sarabia/apicalypse"
+	"github.com/markjforte2000/GameShelfAPI/internal/api/scheduling"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
 	"github.com/markjforte2000/GameShelfAPI/internal/logging"
-	"github.com/markjforte2000/GameShelfAPI/internal/scheduling"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"log"
 	"net/http"
@@ -22,13 +22,9 @@ type basicAuthClient struct {
 	scheduler    scheduling.Scheduler
 }
 
-type basicWaiter struct {
-	lock *sync.Mutex
-}
-
 type token struct {
 	accessToken string
-	expiration  *time.Time
+	expiration  time.Time
 	tokenType   string
 }
 
@@ -43,19 +39,14 @@ type gameIntermediate struct {
 	waitGroup   *sync.WaitGroup
 }
 
-func (waiter *basicWaiter) Wait() {
-	waiter.lock.Lock()
-	waiter.lock.Unlock()
+func (client *basicAuthClient) Reauthenticate() {
+	newToken := getAccessToken(client.clientID, client.clientSecret)
+	client.accessToken = newToken
 }
 
-func (client *basicAuthClient) AsyncGetGameDate(title string,
-	year string) (AsyncWaiter, *game.Game) {
-	g := new(game.Game)
-	waiter := &basicWaiter{
-		lock: new(sync.Mutex),
-	}
-	go client.asyncGetGameDataHelper(title, year, g)
-	return waiter, g
+func (client *basicAuthClient) IsTokenExpired() bool {
+	now := time.Now()
+	return now.After(client.accessToken.expiration)
 }
 
 func (client *basicAuthClient) init() {
@@ -63,14 +54,11 @@ func (client *basicAuthClient) init() {
 }
 
 func (client *basicAuthClient) GetGameData(title string, year string) *game.Game {
-	g := new(game.Game)
-	client.parseGameResponse(client.getGameList(title, year), g)
+	if client.IsTokenExpired() {
+		client.Reauthenticate()
+	}
+	g := client.parseGameResponse(client.getGameList(title, year))
 	return g
-}
-
-func (client *basicAuthClient) asyncGetGameDataHelper(title string,
-	year string, g *game.Game) {
-	client.parseGameResponse(client.getGameList(title, year), g)
 }
 
 func (client *basicAuthClient) getGameList(title string, year string) []gameIntermediate {
@@ -84,16 +72,17 @@ func (client *basicAuthClient) getGameList(title string, year string) []gameInte
 	return gameList
 }
 
-func (client *basicAuthClient) parseGameResponse(gameList []gameIntermediate, g *game.Game) {
+func (client *basicAuthClient) parseGameResponse(gameList []gameIntermediate) *game.Game {
 	if len(gameList) == 0 {
-		return
+		return nil
 	}
 	topGame := gameList[0]
 	topGame.waitGroup = new(sync.WaitGroup)
-	client.translateIntermediate(&topGame, g)
+	return client.translateIntermediate(&topGame)
 }
 
-func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermediate, g *game.Game) {
+func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermediate) *game.Game {
+	g := new(game.Game)
 	g.Title = intermediate.Name
 	g.ID = intermediate.ID
 	g.Summary = intermediate.Summary
@@ -103,6 +92,7 @@ func (client *basicAuthClient) translateIntermediate(intermediate *gameIntermedi
 	go client.loadInvolvedCompanies(intermediate, g)
 	go client.loadCover(intermediate, g)
 	intermediate.waitGroup.Wait()
+	return g
 }
 
 func (client *basicAuthClient) loadGenres(intermediate *gameIntermediate, g *game.Game) {

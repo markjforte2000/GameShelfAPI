@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/markjforte2000/GameShelfAPI/internal/igdb_api"
+	"github.com/markjforte2000/GameShelfAPI/internal/api/igdb_api"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"os"
 	"strings"

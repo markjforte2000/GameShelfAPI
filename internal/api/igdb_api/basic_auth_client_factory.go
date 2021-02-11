@@ -61,7 +61,7 @@ func parseAccessTokenResponse(response *http.Response) *token {
 		log.Fatalf("Unable to determine expiration time for token: %v\n", err)
 	}
 	expiration := time.Now().Add(expiresIn)
-	accessToken.expiration = &expiration
+	accessToken.expiration = expiration
 	return accessToken
 }
 
