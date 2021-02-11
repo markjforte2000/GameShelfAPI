@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Henry-Sarabia/apicalypse"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
+	"github.com/markjforte2000/GameShelfAPI/internal/logging"
 	"github.com/markjforte2000/GameShelfAPI/internal/scheduling"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"log"
@@ -130,7 +131,7 @@ func (client *basicAuthClient) constructGenresRequest(genreIDs []int) *http.Requ
 		log.Fatalf("Error creating genre request: %v\n", err)
 	}
 	client.addIGDBHeaders(request)
-	util.PrettyPrintHTTPRequest(request)
+	logging.LogHTTPRequest(request)
 	return request
 }
 
@@ -178,7 +179,7 @@ func (client *basicAuthClient) constructCompanyRequest(companies []*game.Involve
 		log.Fatalf("Error creating company name request: %v\n", err)
 	}
 	client.addIGDBHeaders(request)
-	util.PrettyPrintHTTPRequest(request)
+	logging.LogHTTPRequest(request)
 	return request
 }
 
@@ -223,7 +224,7 @@ func (client *basicAuthClient) constructInvolvedCompanyRequest(involvedCompanyID
 		log.Fatalf("Error creating involved companies request: %v\n", err)
 	}
 	client.addIGDBHeaders(request)
-	util.PrettyPrintHTTPRequest(request)
+	logging.LogHTTPRequest(request)
 	return request
 }
 
@@ -257,7 +258,7 @@ func (client *basicAuthClient) constructArtworkRequest(artworkID int) *http.Requ
 		log.Fatalf("Error creating artwork request: %v\n", err)
 	}
 	client.addIGDBHeaders(request)
-	util.PrettyPrintHTTPRequest(request)
+	logging.LogHTTPRequest(request)
 	return request
 }
 
@@ -278,7 +279,7 @@ func (client *basicAuthClient) constructGameRequest(title string, year string) *
 	if err != nil {
 		log.Fatalf("Failed to create game request: %v\n", err)
 	}
-	util.PrettyPrintHTTPRequest(request)
+	logging.LogHTTPRequest(request)
 	return request
 }
 

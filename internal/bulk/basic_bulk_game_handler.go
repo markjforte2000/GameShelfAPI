@@ -2,7 +2,6 @@ package bulk
 
 import (
 	"github.com/markjforte2000/GameShelfAPI/internal/igdb_api"
-	"log"
 	"sync"
 )
 
@@ -31,7 +30,6 @@ func (handler *basicBulkGameHandler) asyncHandleGame(title string, year string) 
 	response.Title = title
 	response.Year = year
 	handler.processedGames <- response
-	log.Printf("added to channel")
 }
 
 func (handler *basicBulkGameHandler) Get() *handlerResponse {

@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 )
 
 func ParseHTTPResponse(response *http.Response, output interface{}) error {
@@ -15,47 +14,26 @@ func ParseHTTPResponse(response *http.Response, output interface{}) error {
 	return err
 }
 
-func PrettyPrintHTTPRequest(request *http.Request) {
-	log.Printf("%v %v\n", request.Method, request.URL.Path)
-	for name, headers := range request.Header {
-		name = strings.ToLower(name)
-		for _, header := range headers {
-			log.Printf("%v: %v\n", name, header)
-		}
-	}
-	b, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		log.Fatalf("Unable to read http request: %v\n", err)
-	}
-	request.Body.Close()
-	request.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-	log.Printf("Body: %v\n", string(b))
+func CopyRequestBody(request *http.Request) string {
+	body, content := copyBody(request.Body)
+	request.Body = body
+	return content
 }
 
-func PrettyPrintHTTPResponse(response *http.Response) {
-	for name, headers := range response.Header {
-		name = strings.ToLower(name)
-		for _, header := range headers {
-			log.Printf("%v: %v\n", name, header)
-		}
-	}
-	b, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatalf("Unable to read http response: %v\n", err)
-	}
-	response.Body.Close()
-	response.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-	log.Printf("Body: %v\n", string(b))
+func CopyResponseBody(response *http.Response) string {
+	body, content := copyBody(response.Body)
+	response.Body = body
+	return content
 }
 
-func CreateRequestWithHeaders(url string, method string,
-	headers map[string]string, body io.Reader) (*http.Request, error) {
-	request, err := http.NewRequest(method, url, body)
+func copyBody(body io.ReadCloser) (io.ReadCloser, string) {
+	if body == nil {
+		return nil, ""
+	}
+	b, err := ioutil.ReadAll(body)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Unable to read http body: %v\n", err)
 	}
-	for header, value := range headers {
-		request.Header.Set(header, value)
-	}
-	return request, nil
+	body.Close()
+	return ioutil.NopCloser(bytes.NewBuffer(b)), string(b)
 }

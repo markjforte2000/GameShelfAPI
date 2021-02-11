@@ -2,6 +2,7 @@ package igdb_api
 
 import (
 	"fmt"
+	"github.com/markjforte2000/GameShelfAPI/internal/logging"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"log"
 	"net/http"
@@ -18,10 +19,17 @@ func newBasicAuthClient(clientID string, clientSecret string) *basicAuthClient {
 
 func getAccessToken(clientID string, clientSecret string) *token {
 	formattedURL := buildRequestURL(clientID, clientSecret)
+	request, err := http.NewRequest("POST", formattedURL, nil)
+	if err != nil {
+		log.Fatalf("Failed to create token request: %v\n", request)
+	}
+	request.Header.Set("Content-Type", "Application/json")
+	logging.LogHTTPRequest(request)
 	resp, err := http.Post(formattedURL, "Application/json", nil)
 	if err != nil {
 		log.Fatalf("Error getting Access Token: %v", err)
 	}
+	logging.LogHTTPResponse(request, resp)
 	accessToken := parseAccessTokenResponse(resp)
 	err = resp.Body.Close()
 	if err != nil {

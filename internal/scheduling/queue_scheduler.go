@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"github.com/markjforte2000/GameShelfAPI/internal/logging"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"net/http"
 	"sync"
@@ -73,11 +74,11 @@ func manageQueueScheduler(scheduler *queueScheduler) {
 }
 
 func executeRequest(scheduler *queueScheduler, request *queueRequest) {
-	util.PrettyPrintHTTPRequest(request.httpRequest)
+	logging.LogHTTPRequest(request.httpRequest)
 	response, err := scheduler.httpClient.Do(request.httpRequest)
 	request.err = err
 	if err == nil {
-		util.PrettyPrintHTTPResponse(response)
+		logging.LogHTTPResponse(request.httpRequest, response)
 		err = util.ParseHTTPResponse(response, request.output)
 		request.err = err
 		err = response.Body.Close()
