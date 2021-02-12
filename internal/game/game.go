@@ -30,3 +30,9 @@ type InvolvedCompany struct {
 	Publisher bool   `json:"publisher"`
 	Developer bool   `json:"developer"`
 }
+
+type Platform struct {
+	Name         string `json:"name"`
+	ID           string `json:"id"`
+	Abbreviation string `json:"abbreviation"`
+}
