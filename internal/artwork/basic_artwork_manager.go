@@ -36,7 +36,6 @@ func (manager *basicArtworkManager) downloadArtwork(artwork *game.Artwork) strin
 	if err != nil {
 		log.Fatalf("Error downloading artwork: %v\n", err)
 	}
-	logging.LogHTTPResponse(request, response)
 	downloadLocation := manager.getArtworkFullPath(artwork)
 	out, err := os.Create(downloadLocation)
 	if err != nil {
