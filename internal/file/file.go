@@ -1,23 +1,19 @@
 package file
 
-import "github.com/fsnotify/fsnotify"
+import (
+	"github.com/fsnotify/fsnotify"
+	"github.com/markjforte2000/GameShelfAPI/internal/game"
+)
 
 // File format for roms
 // Game name (year) [platform].extension
 
-type GameFile struct {
-	Name     string
-	Year     string
-	Platform string
-	FileName string
-}
-
 type Manager interface {
-	GetCurrentFiles() []*GameFile
+	GetCurrentFiles() []*game.GameFile
 	init(rootDirectory string, handler NewFileHandler)
 }
 
-type NewFileHandler func(file *GameFile, op fsnotify.Op)
+type NewFileHandler func(file *game.GameFile, op fsnotify.Op)
 
 func NewManager(fileDirectory string, handler NewFileHandler) Manager {
 	manager := new(fsnotifyFileManager)

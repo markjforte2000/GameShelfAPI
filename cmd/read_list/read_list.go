@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"github.com/markjforte2000/GameShelfAPI/internal/api/igdb_api"
+	game2 "github.com/markjforte2000/GameShelfAPI/internal/game"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 	"log"
 	"os"
@@ -33,7 +34,12 @@ func main() {
 		parts := strings.Split(scanner.Text(), ",")
 		title := parts[0]
 		year := parts[1]
-		game := client.GetGameData(title, year)
+		game := client.GetGameData(game2.GameFile{
+			Title:    title,
+			Year:     year,
+			Platform: "",
+			FileName: "",
+		})
 		gameString := util.GameToPrettyString(game)
 		output.WriteString(gameString + "\n")
 	}

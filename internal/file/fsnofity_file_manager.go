@@ -2,6 +2,7 @@ package file
 
 import (
 	"github.com/fsnotify/fsnotify"
+	"github.com/markjforte2000/GameShelfAPI/internal/game"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ type fsnotifyFileManager struct {
 	handler       NewFileHandler
 }
 
-func (manager *fsnotifyFileManager) GetCurrentFiles() []*GameFile {
+func (manager *fsnotifyFileManager) GetCurrentFiles() []*game.GameFile {
 	var files []string
 	err := filepath.Walk(manager.rootDirectory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -32,7 +33,7 @@ func (manager *fsnotifyFileManager) GetCurrentFiles() []*GameFile {
 	if err != nil {
 		log.Fatalf("Error walking root directory: %v\n", err)
 	}
-	var gameFiles []*GameFile
+	var gameFiles []*game.GameFile
 	for _, file := range files {
 		gameFile := parseFileName(file)
 		if gameFile == nil {

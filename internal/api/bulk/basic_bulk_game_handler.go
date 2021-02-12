@@ -2,6 +2,7 @@ package bulk
 
 import (
 	"github.com/markjforte2000/GameShelfAPI/internal/api/igdb_api"
+	"github.com/markjforte2000/GameShelfAPI/internal/game"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
 )
 
@@ -13,17 +14,17 @@ type basicBulkGameHandler struct {
 	client                  igdb_api.AuthorizedClient
 }
 
-func (handler *basicBulkGameHandler) Add(title string, year string) {
+func (handler *basicBulkGameHandler) Add(gameFile *game.GameFile) {
 	handler.unprocessedGamesCounter.Increment()
-	go handler.asyncHandleGame(title, year)
+	go handler.asyncHandleGame(gameFile)
 }
 
-func (handler *basicBulkGameHandler) asyncHandleGame(title string, year string) {
-	game := handler.client.GetGameData(title, year)
+func (handler *basicBulkGameHandler) asyncHandleGame(gameFile *game.GameFile) {
+	g := handler.client.GetGameData(gameFile)
 	response := new(handlerResponse)
-	response.GameData = game
-	response.Title = title
-	response.Year = year
+	response.GameData = g
+	response.Title = gameFile.Title
+	response.Year = gameFile.Year
 	handler.processedGames <- response
 }
 

@@ -10,7 +10,7 @@ import (
 func main() {
 	id, secret := getClientIDAndSecret()
 	client := igdb_api.NewAuthorizedClient(id, secret)
-	game := client.GetGameData("Super Mario Bros", "1985")
+	game := client.GetGameData(nil)
 	util.PrettyPrintGame(game)
 }
 

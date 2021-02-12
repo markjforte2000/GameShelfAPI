@@ -3,7 +3,7 @@ package igdb_api
 import "github.com/markjforte2000/GameShelfAPI/internal/game"
 
 type AuthorizedClient interface {
-	GetGameData(title string, year string) *game.Game
+	GetGameData(gameFile *game.GameFile) *game.Game
 	Reauthenticate()
 	IsTokenExpired() bool
 	init()

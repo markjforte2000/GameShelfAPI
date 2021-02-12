@@ -1,8 +1,11 @@
 package file
 
-import "log"
+import (
+	"github.com/markjforte2000/GameShelfAPI/internal/game"
+	"log"
+)
 
-func logGameFile(file *GameFile) {
-	log.Printf("Game File: Name: %v\tYear: %v\tPlatform: %v\tFile Name: %v\n",
-		file.Name, file.Year, file.Platform, file.FileName)
+func logGameFile(file *game.GameFile) {
+	log.Printf("Game File: Title: %v\tYear: %v\tPlatform: %v\tFile Title: %v\n",
+		file.Title, file.Year, file.Platform, file.FileName)
 }

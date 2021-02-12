@@ -3,7 +3,7 @@ package bulk
 import "github.com/markjforte2000/GameShelfAPI/internal/game"
 
 type BulkGameHandler interface {
-	Add(title string, year string)
+	Add(gameFile *game.GameFile)
 	Get() *handlerResponse
 	init(clientID string, clientSecret string)
 }

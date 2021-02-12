@@ -53,16 +53,16 @@ func (client *basicAuthClient) init() {
 	client.scheduler = scheduling.NewScheduler()
 }
 
-func (client *basicAuthClient) GetGameData(title string, year string) *game.Game {
+func (client *basicAuthClient) GetGameData(gameFile *game.GameFile) *game.Game {
 	if client.IsTokenExpired() {
 		client.Reauthenticate()
 	}
-	g := client.parseGameResponse(client.getGameList(title, year))
+	g := client.parseGameResponse(client.getGameList(gameFile))
 	return g
 }
 
-func (client *basicAuthClient) getGameList(title string, year string) []gameIntermediate {
-	request := client.constructGameRequest(title, year)
+func (client *basicAuthClient) getGameList(gameFile *game.GameFile) []gameIntermediate {
+	request := client.constructGameRequest(gameFile)
 	var gameList []gameIntermediate
 	response := client.scheduler.ScheduleHTTPRequest(request, &gameList)
 	response.Wait()
@@ -253,15 +253,15 @@ func (client *basicAuthClient) constructArtworkRequest(artworkID int) *http.Requ
 	return request
 }
 
-func (client *basicAuthClient) constructGameRequest(title string, year string) *http.Request {
-	startTimestamp, endTimestamp := getUnixTimestampRange(year)
+func (client *basicAuthClient) constructGameRequest(gameFile *game.GameFile) *http.Request {
+	startTimestamp, endTimestamp := getUnixTimestampRange(gameFile.Year)
 	request, err := apicalypse.NewRequest(
 		"POST",
 		"https://api.igdb.com/v4/games",
 		apicalypse.Limit(1),
 		apicalypse.Fields("name", "genres", "first_release_date",
 			"involved_companies", "summary", "cover"),
-		apicalypse.Search("", title),
+		apicalypse.Search("", gameFile.Title),
 		apicalypse.Where(
 			fmt.Sprintf("first_release_date > %v & first_release_date < %v & category = 0",
 				startTimestamp, endTimestamp)),
