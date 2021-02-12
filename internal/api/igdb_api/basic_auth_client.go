@@ -231,7 +231,8 @@ func (client *basicAuthClient) loadCover(intermediate *gameIntermediate, g *game
 	}
 	cover := covers[0]
 	// replace thumbnail with full size artwork
-	cover.URL = strings.Replace(cover.URL, "t_thumb", "t_cover_big", 1)
+	cover.RemoteURL = strings.Replace(cover.RemoteURL, "t_thumb", "t_cover_big", 1)
+	cover.RemoteURL = "https:" + cover.RemoteURL
 	g.Cover = &cover
 	intermediate.waitGroup.Done()
 }

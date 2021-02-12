@@ -1,6 +1,8 @@
 package game
 
-import "time"
+import (
+	"time"
+)
 
 type Game struct {
 	ID                int                `json:"id"`
@@ -10,6 +12,11 @@ type Game struct {
 	Summary           string             `json:"summary"`
 	Genres            []*Genre           `json:"genres"`
 	Cover             *Artwork           `json:"cover"`
+}
+
+type Artwork struct {
+	RemoteURL string `json:"url"`
+	ID        int    `json:"id"`
 }
 
 type Genre struct {
@@ -22,9 +29,4 @@ type InvolvedCompany struct {
 	ID        int    `json:"id"`
 	Publisher bool   `json:"publisher"`
 	Developer bool   `json:"developer"`
-}
-
-type Artwork struct {
-	URL string `json:"url"`
-	ID  int    `json:"id"`
 }
