@@ -34,7 +34,7 @@ func main() {
 		parts := strings.Split(scanner.Text(), ",")
 		title := parts[0]
 		year := parts[1]
-		game := client.GetGameData(game2.GameFile{
+		game := client.GetGameData(&game2.GameFile{
 			Title:    title,
 			Year:     year,
 			Platform: "",
