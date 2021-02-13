@@ -12,6 +12,7 @@ type Game struct {
 	Summary           string             `json:"summary"`
 	Genres            []*Genre           `json:"genres"`
 	Cover             *Artwork           `json:"cover"`
+	Filename          string             `json:"filename"`
 }
 
 type Artwork struct {
@@ -20,8 +21,8 @@ type Artwork struct {
 }
 
 type Genre struct {
-	Name string `json:"name"`
-	ID   int    `json:"id"`
+	Name string `json:"name" db:"name"`
+	ID   int    `json:"id" db:"id"`
 }
 
 type InvolvedCompany struct {

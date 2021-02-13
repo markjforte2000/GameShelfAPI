@@ -58,6 +58,7 @@ func (client *basicAuthClient) GetGameData(gameFile *game.GameFile) *game.Game {
 		client.Reauthenticate()
 	}
 	g := client.parseGameResponse(client.getGameList(gameFile))
+	g.Filename = gameFile.FileName
 	return g
 }
 
