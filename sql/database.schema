@@ -1,0 +1,40 @@
+CREATE TABLE game (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    releaseDate INTEGER NOT NULL,
+    summary TEXT NOT NULL,
+    filename TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE company (
+    id INTEGER NOT NULL ,
+    gameID INTEGER NOT NULL,
+    name Text NOT NULL,
+    publisher INTEGER(1),
+    developer INTEGER(1),
+    FOREIGN KEY (gameID) REFERENCES game(ID),
+    PRIMARY KEY (id, gameID)
+);
+
+CREATE TABLE genre (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE artwork (
+    id INTEGER PRIMARY KEY,
+    remoteURL TEXT NOT NULL,
+    gameID INTEGER NOT NULL,
+    FOREIGN KEY (gameID) REFERENCES game(id)
+);
+
+
+CREATE TABLE genreAssociation (
+    genreID INTEGER NOT NULL,
+    gameID INTEGER NOT NULL,
+    FOREIGN KEY (genreID) REFERENCES genre(id),
+    FOREIGN KEY (gameID) REFERENCES game(id),
+    PRIMARY KEY (genreID, gameID)
+)
+
+
