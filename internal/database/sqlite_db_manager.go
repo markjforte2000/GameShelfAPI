@@ -39,7 +39,7 @@ func (manager *sqliteDBManager) alterGameDate(g *game.Game) {
 		updateQuery := `UPDATE game SET 
 			id=$1,title=$2,releaseDate=$3,summary=$4,filename=$5
 			WHERE id=$6`
-		manager.executeInsert(updateQuery, g.ID, g.Title, g.ReleaseDate,
+		manager.executeInsert(updateQuery, g.ID, g.Title, g.ReleaseDate.Unix(),
 			g.Summary, g.Filename, currentGame.ID)
 	}
 	if g.Cover.ID != currentGame.Cover.ID ||
@@ -328,8 +328,8 @@ func (manager *sqliteDBManager) initializeTables() {
 		)`)
 }
 
-func (manager *sqliteDBManager) createTable(queryString string) {
-	statement, err := manager.db.Prepare(queryString)
+func (manager *sqliteDBManager) createTable(createString string) {
+	statement, err := manager.db.Prepare(createString)
 	if err != nil {
 		log.Fatalf("Failed to create sql statement: %v\n", err)
 	}

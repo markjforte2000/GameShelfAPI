@@ -17,25 +17,33 @@ type Game struct {
 
 func (g *Game) Equal(other *Game) bool {
 	if g.ID != other.ID || g.Filename != other.Filename ||
-		!g.ReleaseDate.Equal(other.ReleaseDate) || g.Summary != other.Summary ||
-		g.Title != other.Title {
+		!g.ReleaseDate.Truncate(time.Second).Equal(other.ReleaseDate.Truncate(time.Second)) ||
+		g.Summary != other.Summary || g.Title != other.Title {
 		return false
 	}
 	if !g.Cover.Equal(other.Cover) {
 		return false
 	}
 	for _, genre := range g.Genres {
+		match := false
 		for _, otherGenre := range other.Genres {
-			if !genre.Equal(otherGenre) {
-				return false
+			if genre.Equal(otherGenre) {
+				match = true
 			}
+		}
+		if !match {
+			return false
 		}
 	}
 	for _, company := range g.InvolvedCompanies {
+		match := false
 		for _, otherCompany := range other.InvolvedCompanies {
-			if !company.Equal(otherCompany) {
-				return false
+			if company.Equal(otherCompany) {
+				match = true
 			}
+		}
+		if !match {
+			return false
 		}
 	}
 	return true

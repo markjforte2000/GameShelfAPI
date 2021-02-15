@@ -43,7 +43,7 @@ func main() {
 			RemoteURL: "https://www.example.com",
 			ID:        1,
 		},
-		Filename: "test.rom",
+		Filename: ".test.rom",
 	}
 	manager.SaveGameData(&g)
 	g.Filename = "update.rom"
