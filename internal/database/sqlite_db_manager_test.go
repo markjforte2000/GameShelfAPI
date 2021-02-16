@@ -7,15 +7,28 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 )
-
-const TestDir = "D:/Documents/Program/Web/GameLibrary/GameShelfAPI/.test/"
 
 type AlterFunc func(t *testing.T, toAlter *game.Game, original *game.Game, manager *sqliteDBManager)
 
+func TestAccessInvalidGameData(t *testing.T) {
+	manager := initTestSQLiteManager(t)
+	inserted := newTestGame(t)
+	manager.SaveGameData(inserted)
+	gameFile := &game.GameFile{
+		Title:    "Invalid title",
+		Year:     "2021",
+		Platform: "Unknown",
+		FileName: "invalid.rom",
+	}
+	_, exists := manager.AccessGameData(gameFile)
+	if exists {
+		t.Errorf("Accessed game should not exist")
+	}
+}
+
 func TestAccessGameData(t *testing.T) {
-	manager := initTestManager(t)
+	manager := initTestSQLiteManager(t)
 	inserted := newTestGame(t)
 	manager.SaveGameData(inserted)
 	gameFile := &game.GameFile{
@@ -24,8 +37,11 @@ func TestAccessGameData(t *testing.T) {
 		Platform: "Unknown",
 		FileName: t.Name() + ".rom",
 	}
-	accessed := manager.AccessGameData(gameFile)
-	if accessed != nil && !inserted.Equal(accessed) {
+	accessed, exists := manager.AccessGameData(gameFile)
+	if !exists {
+		t.Error("Accessed game does not exist")
+	}
+	if !inserted.Equal(accessed) {
 		t.Errorf("Accessed game does not equal inserted game")
 	}
 }
@@ -184,7 +200,7 @@ func helperTestAlterGame(t *testing.T, alterFunc AlterFunc) *sqliteDBManager {
 		t.Errorf("Original game does not equal copy:\n"+
 			"%v\ndoes not equal\n%v", original, copyGame)
 	}
-	manager := initTestManager(t)
+	manager := initTestSQLiteManager(t)
 	manager.insertNewGame(original)
 	alterFunc(t, copyGame, original, manager)
 	resultingGames := manager.queryGameTable(`SELECT * FROM game WHERE id=0`)
@@ -205,7 +221,7 @@ func helperTestAlterGame(t *testing.T, alterFunc AlterFunc) *sqliteDBManager {
 
 func TestGameIO(t *testing.T) {
 	g := newTestGame(t)
-	manager := initTestManager(t)
+	manager := initTestSQLiteManager(t)
 	manager.insertNewGame(g)
 	resultingGames := manager.queryGameTable(`SELECT * FROM game WHERE id=0`)
 	if len(resultingGames) == 0 {
@@ -227,7 +243,7 @@ func TestInitializeTables(t *testing.T) {
 		"artwork":          {"id", "remoteURL", "gameID"},
 		"genreAssociation": {"genreID", "gameID"},
 	}
-	manager := initTestManager(t)
+	manager := initTestSQLiteManager(t)
 	for table, expectedColumns := range expectedTables {
 		testTableHelper(t, manager.db, table, expectedColumns)
 	}
@@ -235,7 +251,7 @@ func TestInitializeTables(t *testing.T) {
 }
 
 func TestCreateTable(t *testing.T) {
-	manager := initTestManager(t)
+	manager := initTestSQLiteManager(t)
 	manager.createTable(`
 		CREATE TABLE testTable (
 			id INTEGER PRIMARY KEY,
@@ -291,49 +307,10 @@ func testTableHelper(t *testing.T, db *sql.DB, table string, expectedColumns []s
 	return true
 }
 
-func initTestManager(t *testing.T) *sqliteDBManager {
+func initTestSQLiteManager(t *testing.T) *sqliteDBManager {
 	filename := path.Join(TestDir, t.Name()+".db")
 	_ = os.Remove(filename)
 	manager := new(sqliteDBManager)
 	manager.init(filename)
 	return manager
-}
-
-func newTestGame(t *testing.T) *game.Game {
-	return &game.Game{
-		ID:    0,
-		Title: t.Name() + " Game Title",
-		ReleaseDate: time.Date(2021, 2, 14, 12,
-			0, 0, 0, time.UTC),
-		InvolvedCompanies: []*game.InvolvedCompany{
-			{
-				Name:      t.Name() + " Company Publisher",
-				ID:        1,
-				Publisher: true,
-				Developer: false,
-			},
-			{
-				Name:      t.Name() + " Company Developer",
-				ID:        2,
-				Publisher: false,
-				Developer: true,
-			},
-		},
-		Summary: t.Name() + " Summary",
-		Genres: []*game.Genre{
-			{
-				Name: t.Name() + " Genre 1",
-				ID:   0,
-			},
-			{
-				Name: t.Name() + " Genre 2",
-				ID:   1,
-			},
-		},
-		Cover: &game.Artwork{
-			RemoteURL: "https://www." + t.Name() + ".lan",
-			ID:        1,
-		},
-		Filename: t.Name() + ".rom",
-	}
 }

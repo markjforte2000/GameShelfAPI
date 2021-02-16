@@ -5,7 +5,7 @@ import (
 )
 
 type Manager interface {
-	AccessGameData(gameFile *game.GameFile) *game.Game
+	AccessGameData(gameFile *game.GameFile) (*game.Game, bool)
 	SaveGameData(g *game.Game)
 	init(dbFile string)
 }

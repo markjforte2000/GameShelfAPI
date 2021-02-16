@@ -29,12 +29,14 @@ type alteredGenreData struct {
 	deleteAssociation bool
 }
 
-func (manager *sqliteDBManager) AccessGameData(gameFile *game.GameFile) *game.Game {
+func (manager *sqliteDBManager) AccessGameData(gameFile *game.GameFile) (*game.Game, bool) {
 	games := manager.queryGameTable(`SELECT * FROM game WHERE filename=$1`, gameFile.FileName)
 	if games == nil {
-		return nil
+		log.Printf("Entry not found in database for %s", gameFile.FileName)
+		return nil, false
 	}
-	return games[0]
+	log.Printf("Entry found in database for %s", gameFile.FileName)
+	return games[0], true
 }
 
 func (manager *sqliteDBManager) SaveGameData(g *game.Game) {
