@@ -16,6 +16,12 @@ func NewManager(dbFile string) Manager {
 	return m
 }
 
+func NewAsyncInsertManager(dbFile string) Manager {
+	m := new(asyncInsertDBManager)
+	m.init(dbFile)
+	return m
+}
+
 type genreAssociation struct {
 	genreID int
 	gameID  int
