@@ -3,7 +3,9 @@ CREATE TABLE game (
     title TEXT NOT NULL,
     releaseDate INTEGER NOT NULL,
     summary TEXT NOT NULL,
-    filename TEXT NOT NULL UNIQUE
+    filename TEXT NOT NULL UNIQUE,
+    coverID INTEGER NOT NULL,
+    FOREIGN KEY (coverID) REFERENCES artwork(ID)
 );
 
 CREATE TABLE company (

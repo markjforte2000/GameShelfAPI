@@ -15,65 +15,200 @@ type sqliteDBManager struct {
 	db *sql.DB
 }
 
-func (manager *sqliteDBManager) AccessGameDate(gameFile *game.GameFile) *game.Game {
-	panic("implement me")
+type alteredCompanyData struct {
+	company *game.InvolvedCompany
+	altered bool
+	deleted bool
+	create  bool
+}
+
+type alteredGenreData struct {
+	genre             *game.Genre
+	createGenre       bool
+	createAssociation bool
+	deleteAssociation bool
+}
+
+func (manager *sqliteDBManager) AccessGameData(gameFile *game.GameFile) *game.Game {
+	games := manager.queryGameTable(`SELECT * FROM game WHERE filename=$1`, gameFile.FileName)
+	if games == nil {
+		return nil
+	}
+	return games[0]
 }
 
 func (manager *sqliteDBManager) SaveGameData(g *game.Game) {
 	if manager.doesGameExist(g) {
-		manager.alterGameDate(g)
+		manager.alterGameData(g)
 	} else {
 		manager.insertNewGame(g)
 	}
 }
 
-func (manager *sqliteDBManager) alterGameDate(g *game.Game) {
-	games := manager.queryGameTable(`SELECT * FROM game WHERE id=$1`, g.ID)
+func (manager *sqliteDBManager) alterGameData(alteredGame *game.Game) {
+	games := manager.queryGameTable(`SELECT * FROM game WHERE id=$1`, alteredGame.ID)
 	if len(games) == 0 {
 		log.Fatalf("Database error - game exists in table but can not be found")
 	}
-	currentGame := games[0]
-	if g.ID != currentGame.ID || g.Filename != currentGame.Filename ||
-		!g.ReleaseDate.Equal(currentGame.ReleaseDate) || g.Summary != currentGame.Summary ||
-		g.Title != currentGame.Title {
-		updateQuery := `UPDATE game SET 
-			id=$1,title=$2,releaseDate=$3,summary=$4,filename=$5
-			WHERE id=$6`
-		manager.executeInsert(updateQuery, g.ID, g.Title, g.ReleaseDate.Unix(),
-			g.Summary, g.Filename, currentGame.ID)
+	original := games[0]
+	// check basic company data
+	if (alteredGame.ID == original.ID) && (alteredGame.Filename != original.Filename ||
+		!alteredGame.ReleaseDate.Equal(original.ReleaseDate) || alteredGame.Summary != original.Summary ||
+		alteredGame.Title != original.Title) {
+		manager.alterBasicGameData(alteredGame, original)
 	}
-	if g.Cover.ID != currentGame.Cover.ID ||
-		g.Cover.RemoteURL != currentGame.Cover.RemoteURL {
-		updateQuery := `UPDATE artwork SET 
-			id=$1,remoteURL=$2
-			WHERE id=$3`
-		manager.executeInsert(updateQuery, g.Cover.ID, g.Cover.RemoteURL)
+	// check artwork
+	if !alteredGame.Cover.Equal(original.Cover) {
+		manager.alterGameArtwork(alteredGame, original)
 	}
-	var companiesToRemove []*game.InvolvedCompany
-	copy(companiesToRemove, currentGame.InvolvedCompanies)
-	for _, company := range currentGame.InvolvedCompanies {
-		matchID := false
-		for _, other := range g.InvolvedCompanies {
-			if company.ID == other.ID && (company.Name != other.Name ||
-				company.Developer != other.Developer || company.Publisher != other.Publisher) {
-				updateQuery := `UPDATE company SET 
-					id=$1,gameID=$2,name=$3,publisher=$4,developer=$5
-					WHERE id=$6`
-				manager.executeInsert(updateQuery, other.ID, g.ID, other.Name,
-					other.Publisher, other.Developer, other.ID)
+	manager.alterCompanyData(alteredGame, original)
+	manager.alterGameGenre(alteredGame, original)
+}
+
+func (manager *sqliteDBManager) alterBasicGameData(alteredGame *game.Game,
+	originalGame *game.Game) {
+	updateQuery := `UPDATE game SET 
+			title=$1,releaseDate=$2,summary=$3,filename=$4
+			WHERE id=$5`
+	manager.executeInsert(updateQuery, alteredGame.Title, alteredGame.ReleaseDate.Unix(),
+		alteredGame.Summary, alteredGame.Filename, originalGame.ID)
+}
+
+func (manager *sqliteDBManager) alterGameGenre(alteredGame *game.Game,
+	originalGame *game.Game) {
+	alteredGenres := manager.getAlteredGenreInfo(alteredGame, originalGame)
+	for _, info := range alteredGenres {
+		if info.createGenre {
+			manager.insertGenre(info.genre)
+		}
+		if info.createAssociation {
+			manager.insertGenreAssociation(info.genre, alteredGame.ID)
+		} else if info.deleteAssociation {
+			manager.deleteGenreAssociation(alteredGame.ID, info.genre.ID)
+		}
+	}
+}
+
+func (manager *sqliteDBManager) deleteGenreAssociation(gameID int, genreID int) {
+	query := `DELETE FROM genreAssociation WHERE gameID=$1 AND genreID=$2`
+	manager.executeInsert(query, gameID, genreID)
+}
+
+func (manager *sqliteDBManager) getAlteredGenreInfo(alteredGame *game.Game,
+	originalGame *game.Game) []*alteredGenreData {
+	alteredGenreMap := make(map[int]*alteredGenreData)
+	// load original genres
+	for _, originalGenre := range originalGame.Genres {
+		alteredGenreMap[originalGenre.ID] = &alteredGenreData{
+			genre:             originalGenre,
+			createGenre:       false,
+			createAssociation: false,
+			deleteAssociation: true,
+		}
+	}
+	// load altered genres
+	for _, alteredGenre := range alteredGame.Genres {
+		if data, exists := alteredGenreMap[alteredGenre.ID]; exists {
+			data.deleteAssociation = false
+		} else {
+			alteredGenreMap[alteredGenre.ID] = &alteredGenreData{
+				genre:             alteredGenre,
+				createGenre:       false,
+				createAssociation: true,
+				deleteAssociation: false,
 			}
-			if company.ID == other.ID {
-				matchID = true
+			if !manager.doesGenreExist(alteredGenre) {
+				alteredGenreMap[alteredGenre.ID].createGenre = true
 			}
 		}
-		if !matchID {
-			companiesToRemove = append(companiesToRemove, company)
+	}
+	// convert to list
+	var genreData []*alteredGenreData
+	for _, data := range alteredGenreMap {
+		genreData = append(genreData, data)
+	}
+	return genreData
+}
+
+func (manager *sqliteDBManager) alterGameArtwork(alteredGame *game.Game,
+	originalGame *game.Game) {
+	if !manager.doesArtworkExist(alteredGame.Cover.ID) {
+		manager.insertArtwork(alteredGame.Cover, alteredGame.ID)
+	}
+	if originalGame.Cover.ID == alteredGame.Cover.ID && !originalGame.Cover.Equal(alteredGame.Cover) {
+		updateQuery := `UPDATE artwork SET remoteURL=$1 WHERE id=$2`
+		manager.executeInsert(updateQuery, alteredGame.Cover.RemoteURL, alteredGame.Cover.ID)
+	} else if originalGame.Cover.ID != alteredGame.Cover.ID {
+		updateQuery := `UPDATE game SET coverID=$1 WHERE id=$2`
+		manager.executeInsert(updateQuery, alteredGame.Cover.ID, alteredGame.ID)
+	}
+}
+
+func (manager *sqliteDBManager) doesArtworkExist(artworkID int) bool {
+	artworks := manager.queryArtworkTable(`SELECT * from artwork where id=$1`, artworkID)
+	return len(artworks) > 0
+}
+
+func (manager *sqliteDBManager) alterCompanyData(alteredGame *game.Game,
+	originalGame *game.Game) {
+	alteredCompanyInfo := getAlteredCompanyInfo(alteredGame, originalGame)
+	for _, info := range alteredCompanyInfo {
+		if info.deleted {
+			manager.deleteCompany(info.company)
+		} else if info.altered {
+			manager.alterCompany(info.company)
+		} else if info.create {
+			manager.insertCompanyData(info.company, alteredGame.ID)
 		}
 	}
-	for _, toRemove := range companiesToRemove {
-		updateQuery := `DELETE FROM company WHERE id=$1`
-		manager.executeInsert(updateQuery, toRemove.ID)
+}
+
+func (manager *sqliteDBManager) deleteCompany(company *game.InvolvedCompany) {
+	deleteQuery := `DELETE FROM company WHERE id=$1`
+	manager.executeInsert(deleteQuery, company.ID)
+}
+
+func (manager *sqliteDBManager) alterCompany(company *game.InvolvedCompany) {
+	updateQuery := `UPDATE company SET 
+					name=$1,publisher=$2,developer=$3
+					WHERE id=$4`
+	manager.executeInsert(updateQuery, company.Name, company.Publisher, company.Developer, company.ID)
+}
+
+func getAlteredCompanyInfo(alteredGame *game.Game, originalGame *game.Game) []*alteredCompanyData {
+	alteredCompanyMap := make(map[int]*alteredCompanyData)
+	// load original companies
+	for _, company := range originalGame.InvolvedCompanies {
+		alteredCompanyMap[company.ID] = &alteredCompanyData{
+			company: company,
+			altered: false,
+			deleted: true,
+			create:  false,
+		}
 	}
+	// load altered companies
+	for _, company := range alteredGame.InvolvedCompanies {
+		if data, exists := alteredCompanyMap[company.ID]; exists {
+			data.deleted = false
+			if data.company.ID == company.ID && !data.company.Equal(company) {
+				data.company = company
+				data.altered = true
+			}
+		} else {
+			alteredCompanyMap[company.ID] = &alteredCompanyData{
+				company: company,
+				altered: false,
+				deleted: false,
+				create:  true,
+			}
+		}
+	}
+	// convert to list
+	var alteredCompanies []*alteredCompanyData
+	for _, companyData := range alteredCompanyMap {
+		alteredCompanies = append(alteredCompanies, companyData)
+	}
+	return alteredCompanies
 }
 
 func (manager *sqliteDBManager) insertNewGame(g *game.Game) {
@@ -93,10 +228,11 @@ func (manager *sqliteDBManager) insertNewGame(g *game.Game) {
 func (manager *sqliteDBManager) queryGameTable(queryString string,
 	args ...interface{}) []*game.Game {
 	var games []*game.Game
+	var coverID int
 	manager.queryTable(queryString, func(rows *sql.Rows) error {
 		g := new(game.Game)
 		var timeStamp int64
-		err := rows.Scan(&g.ID, &g.Title, &timeStamp, &g.Summary, &g.Filename)
+		err := rows.Scan(&g.ID, &g.Title, &timeStamp, &g.Summary, &g.Filename, &coverID)
 		if err != nil {
 			return err
 		}
@@ -107,7 +243,7 @@ func (manager *sqliteDBManager) queryGameTable(queryString string,
 	for _, g := range games {
 		// load artwork
 		relatedArtwork := manager.queryArtworkTable(`SELECT * FROM artwork
-			WHERE gameID=$1`, g.ID)
+			WHERE id=$1`, coverID)
 		if len(relatedArtwork) > 0 {
 			g.Cover = relatedArtwork[0]
 		}
@@ -236,10 +372,10 @@ func (manager *sqliteDBManager) doesRowExist(query string, args ...interface{}) 
 }
 
 func (manager *sqliteDBManager) insertGameData(g *game.Game) {
-	insertStatement := `INSERT INTO game (id, title, releaseDate, summary, filename)
-		VALUES ($1, $2, $3, $4, $5)`
+	insertStatement := `INSERT INTO game (id, title, releaseDate, summary, filename, coverID)
+		VALUES ($1, $2, $3, $4, $5, $6)`
 	manager.executeInsert(insertStatement, g.ID, g.Title,
-		g.ReleaseDate.Unix(), g.Summary, g.Filename)
+		g.ReleaseDate.Unix(), g.Summary, g.Filename, g.Cover.ID)
 }
 
 func (manager *sqliteDBManager) insertCompanyData(company *game.InvolvedCompany, relatedGameID int) {
@@ -294,7 +430,9 @@ func (manager *sqliteDBManager) initializeTables() {
 		title TEXT NOT NULL,
 		releaseDate INTEGER NOT NULL,
 		summary TEXT NOT NULL,
-    	filename TEXT NOT NULL UNIQUE 
+    	filename TEXT NOT NULL UNIQUE,
+    	coverID INTEGER NOT NULL,
+    	FOREIGN KEY (coverID) REFERENCES artwork(ID)
 		);`)
 	manager.createTable(
 		`CREATE TABLE company (

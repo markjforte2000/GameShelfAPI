@@ -24,6 +24,9 @@ func (g *Game) Equal(other *Game) bool {
 	if !g.Cover.Equal(other.Cover) {
 		return false
 	}
+	if len(g.Genres) != len(other.Genres) {
+		return false
+	}
 	for _, genre := range g.Genres {
 		match := false
 		for _, otherGenre := range other.Genres {
@@ -34,6 +37,9 @@ func (g *Game) Equal(other *Game) bool {
 		if !match {
 			return false
 		}
+	}
+	if len(g.InvolvedCompanies) != len(other.InvolvedCompanies) {
+		return false
 	}
 	for _, company := range g.InvolvedCompanies {
 		match := false
