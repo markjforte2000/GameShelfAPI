@@ -67,6 +67,9 @@ func (manager *fsnotifyFileManager) watchRootDirectory() {
 			if !ok {
 				return
 			}
+			if event.Op == fsnotify.Write || event.Op == fsnotify.Chmod {
+				return
+			}
 			log.Printf("Detected file change: %v\n", event)
 			base := filepath.Base(event.Name)
 			gameFile := parseFileName(base)
@@ -74,7 +77,18 @@ func (manager *fsnotifyFileManager) watchRootDirectory() {
 				return
 			}
 			logGameFile(gameFile)
-			manager.handler(gameFile, event.Op)
+			manager.handler(gameFile, translateOp(event.Op))
 		}
+	}
+}
+
+func translateOp(op fsnotify.Op) Op {
+	switch op {
+	case fsnotify.Remove:
+		return Delete
+	case fsnotify.Create:
+		return Create
+	case fsnotify.Rename:
+		return Rename
 	}
 }
