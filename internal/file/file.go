@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	Exists Op = 0
 	Create Op = 1
 	Rename Op = 2
 	Delete Op = 3

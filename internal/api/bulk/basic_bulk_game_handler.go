@@ -4,6 +4,7 @@ import (
 	"github.com/markjforte2000/GameShelfAPI/internal/api/igdb_api"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
 	"github.com/markjforte2000/GameShelfAPI/internal/util"
+	"sync"
 )
 
 const OutputBufferSize = 128
@@ -14,18 +15,26 @@ type basicBulkGameHandler struct {
 	client                  igdb_api.AuthorizedClient
 }
 
-func (handler *basicBulkGameHandler) Add(gameFile *game.GameFile) {
+func (handler *basicBulkGameHandler) Add(gameFile *game.GameFile) *waitableResponse {
 	handler.unprocessedGamesCounter.Increment()
-	go handler.asyncHandleGame(gameFile)
+	response := &waitableResponse{
+		lock: new(sync.Mutex),
+	}
+	response.lock.Lock()
+	go handler.asyncHandleGame(gameFile, response)
+	return response
 }
 
-func (handler *basicBulkGameHandler) asyncHandleGame(gameFile *game.GameFile) {
+func (handler *basicBulkGameHandler) asyncHandleGame(gameFile *game.GameFile,
+	waitable *waitableResponse) {
 	g := handler.client.GetGameData(gameFile)
 	response := new(handlerResponse)
 	response.GameData = g
 	response.Title = gameFile.Title
 	response.Year = gameFile.Year
 	handler.processedGames <- response
+	waitable.g = g
+	waitable.lock.Unlock()
 }
 
 func (handler *basicBulkGameHandler) Get() *handlerResponse {
