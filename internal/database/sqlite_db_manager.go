@@ -412,11 +412,17 @@ func (manager *sqliteDBManager) executeInsert(statement string, args ...interfac
 
 func (manager *sqliteDBManager) init(dbFile string) {
 	log.Printf("Initializing Database at %v\t", dbFile)
-	file, err := os.Create(dbFile)
-	if err != nil {
-		log.Fatalf("Failed to create database file: %v\n", err)
+	// check if file exists
+	if _, err := os.Stat(dbFile); err == os.ErrNotExist {
+		file, err := os.Create(dbFile)
+		if err != nil {
+			log.Fatalf("Failed to create database file: %v\n", err)
+		}
+		file.Close()
+	} else if err != nil {
+		log.Fatalf("Failed to get status of database file: %v\n")
 	}
-	file.Close()
+
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
 		log.Fatalf("Failed to open database file: %v\n", err)
@@ -427,7 +433,7 @@ func (manager *sqliteDBManager) init(dbFile string) {
 
 func (manager *sqliteDBManager) initializeTables() {
 	manager.createTable(
-		`CREATE TABLE game (
+		`CREATE TABLE IF NOT EXISTS game (
 		id INTEGER PRIMARY KEY,
 		title TEXT NOT NULL,
 		releaseDate INTEGER NOT NULL,
@@ -437,7 +443,7 @@ func (manager *sqliteDBManager) initializeTables() {
     	FOREIGN KEY (coverID) REFERENCES artwork(ID)
 		);`)
 	manager.createTable(
-		`CREATE TABLE company (
+		`CREATE TABLE IF NOT EXISTS company (
 		id INTEGER NOT NULL ,
 		gameID INTEGER NOT NULL,
 		name Text NOT NULL,
@@ -447,19 +453,19 @@ func (manager *sqliteDBManager) initializeTables() {
 		PRIMARY KEY (id, gameID)
 		);`)
 	manager.createTable(
-		`CREATE TABLE genre (
+		`CREATE TABLE IF NOT EXISTS genre (
 		id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL
 		);`)
 	manager.createTable(
-		`CREATE TABLE artwork (
+		`CREATE TABLE IF NOT EXISTS artwork (
 		id INTEGER PRIMARY KEY,
 		remoteURL TEXT NOT NULL,
 		gameID INTEGER NOT NULL,
 		FOREIGN KEY (gameID) REFERENCES game(id)
 		);`)
 	manager.createTable(
-		`CREATE TABLE genreAssociation (
+		`CREATE TABLE IF NOT EXISTS genreAssociation (
 		genreID INTEGER NOT NULL,
 		gameID INTEGER NOT NULL,
 		FOREIGN KEY (genreID) REFERENCES genre(id),

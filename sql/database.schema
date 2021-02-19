@@ -1,4 +1,4 @@
-CREATE TABLE game (
+CREATE TABLE IF NOT EXISTS game (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
     releaseDate INTEGER NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE game (
     FOREIGN KEY (coverID) REFERENCES artwork(ID)
 );
 
-CREATE TABLE company (
+CREATE TABLE IF NOT EXISTS company (
     id INTEGER NOT NULL ,
     gameID INTEGER NOT NULL,
     name Text NOT NULL,
@@ -18,12 +18,12 @@ CREATE TABLE company (
     PRIMARY KEY (id, gameID)
 );
 
-CREATE TABLE genre (
+CREATE TABLE IF NOT EXISTS genre (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL
 );
 
-CREATE TABLE artwork (
+CREATE TABLE IF NOT EXISTS artwork (
     id INTEGER PRIMARY KEY,
     remoteURL TEXT NOT NULL,
     gameID INTEGER NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE artwork (
 );
 
 
-CREATE TABLE genreAssociation (
+CREATE TABLE IF NOT EXISTS genreAssociation (
     genreID INTEGER NOT NULL,
     gameID INTEGER NOT NULL,
     FOREIGN KEY (genreID) REFERENCES genre(id),
