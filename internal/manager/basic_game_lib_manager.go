@@ -6,6 +6,7 @@ import (
 	"github.com/markjforte2000/GameShelfAPI/internal/database"
 	"github.com/markjforte2000/GameShelfAPI/internal/file"
 	"github.com/markjforte2000/GameShelfAPI/internal/game"
+	"path"
 	"sync"
 )
 
@@ -16,6 +17,15 @@ type basicGameLibManager struct {
 	fileManager    file.Manager
 	library        []*game.Game
 	changedGames   []*game.Game
+}
+
+func (manager *basicGameLibManager) GetGameFileNameAndLocation(id int) (string, string) {
+	for _, g := range manager.library {
+		if g.ID == id {
+			return g.Filename, path.Join(getGameDir(), g.Filename)
+		}
+	}
+	return "", ""
 }
 
 func (manager *basicGameLibManager) GetGameLibrary() []*game.Game {

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	const rootDirectory = "./.dev/files/"
+	const rootDirectory = "./.dev/library/"
 	manager := file.NewManager(rootDirectory, handler)
 	manager.GetCurrentFiles()
 	for {

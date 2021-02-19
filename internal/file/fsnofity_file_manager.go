@@ -9,7 +9,7 @@ import (
 )
 
 // file monitor using fsnotify package
-// does not support nested files
+// does not support nested library
 type fsnotifyFileManager struct {
 	watcher       *fsnotify.Watcher
 	rootDirectory string

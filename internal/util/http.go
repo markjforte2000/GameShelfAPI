@@ -14,6 +14,11 @@ func ParseHTTPResponse(response *http.Response, output interface{}) error {
 	return err
 }
 
+func ParseHTTPRequest(request *http.Request, output interface{}) error {
+	err := json.NewDecoder(request.Body).Decode(output)
+	return err
+}
+
 func CopyRequestBody(request *http.Request) string {
 	body, content := copyBody(request.Body)
 	request.Body = body

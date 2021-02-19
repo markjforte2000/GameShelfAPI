@@ -49,7 +49,7 @@ func TestBasicGameLibManager(t *testing.T) {
 	path := os.Getenv("GAME_DIR")
 	os.RemoveAll(path)
 	os.Mkdir(path, os.ModePerm)
-	// create initial game files
+	// create initial game library
 	addGames(existingLibrary)
 	// init manager
 	manager := NewGameLibManager()

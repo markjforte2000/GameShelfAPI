@@ -9,6 +9,7 @@ type GameLibManager interface {
 	GetGameLibrary() []*game.Game
 	GetChanges() []*game.Game
 	AlterGame(g *game.Game)
+	GetGameFileNameAndLocation(id int) (string, string)
 	init()
 }
 
