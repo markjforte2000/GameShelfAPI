@@ -19,11 +19,12 @@ type basicGameLibManager struct {
 }
 
 func (manager *basicGameLibManager) GetGameLibrary() []*game.Game {
+	manager.changedGames = []*game.Game{}
 	return manager.library
 }
 
 func (manager *basicGameLibManager) GetChanges() []*game.Game {
-	var changes []*game.Game
+	changes := make([]*game.Game, len(manager.changedGames))
 	copy(changes, manager.changedGames)
 	manager.changedGames = []*game.Game{}
 	return changes
@@ -37,7 +38,7 @@ func (manager *basicGameLibManager) init() {
 	clientID, clientSecret := getClientIDAndSecret()
 	manager.gameBulk = bulk.NewBulkGameHandler(clientID, clientSecret)
 	manager.artworkManager = artwork.NewManager(getArtworkDir())
-	manager.database = database.NewAsyncInsertManager(getDatabaseDir())
+	manager.database = database.NewAsyncInsertManager(getDatabase())
 	manager.fileManager = file.NewManager(getGameDir(), manager.handleNewFile)
 	manager.library = []*game.Game{}
 	manager.changedGames = []*game.Game{}
@@ -65,6 +66,7 @@ func (manager *basicGameLibManager) handleNewFile(f *game.GameFile, op file.Op) 
 	g, exists := manager.database.AccessGameData(f)
 	if exists {
 		manager.addNewGame(g)
+		return
 	}
 	// get file from bulk
 	response := manager.gameBulk.Add(f)

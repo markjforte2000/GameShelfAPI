@@ -9,9 +9,10 @@ const (
 	Create Op = 1
 	Rename Op = 2
 	Delete Op = 3
+	Null   Op = -1
 )
 
-type Op uint8
+type Op int8
 
 // File format for roms
 // Game name (year) [platform].extension

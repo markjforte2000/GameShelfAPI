@@ -22,8 +22,8 @@ func getGameDir() string {
 	return util.GetEnvironOrFail("GAME_DIR")
 }
 
-func getDatabaseDir() string {
-	return util.GetEnvironOrFail("DATABASE_DIR")
+func getDatabase() string {
+	return util.GetEnvironOrFail("DATABASE")
 }
 
 func getArtworkDir() string {

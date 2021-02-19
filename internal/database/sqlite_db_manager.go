@@ -413,14 +413,14 @@ func (manager *sqliteDBManager) executeInsert(statement string, args ...interfac
 func (manager *sqliteDBManager) init(dbFile string) {
 	log.Printf("Initializing Database at %v\t", dbFile)
 	// check if file exists
-	if _, err := os.Stat(dbFile); err == os.ErrNotExist {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		file, err := os.Create(dbFile)
 		if err != nil {
 			log.Fatalf("Failed to create database file: %v\n", err)
 		}
 		file.Close()
 	} else if err != nil {
-		log.Fatalf("Failed to get status of database file: %v\n")
+		log.Fatalf("Failed to get status of database file: %v\n", err)
 	}
 
 	db, err := sql.Open("sqlite3", dbFile)

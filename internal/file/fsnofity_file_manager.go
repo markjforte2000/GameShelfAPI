@@ -91,5 +91,5 @@ func translateOp(op fsnotify.Op) Op {
 	case fsnotify.Rename:
 		return Rename
 	}
-	return -1
+	return Null
 }

@@ -94,23 +94,16 @@ func executeRequest(scheduler *queueScheduler, request *queueRequest) {
 
 func manageRecentRequests(scheduler *queueScheduler) {
 	scheduler.recentRequestsLock.RLock()
-	var toRelease []int
+	var requestsWaitingFor []*queueRequest
 	currentTime := time.Now()
-	for i, recentRequest := range scheduler.recentRequests {
+	for _, recentRequest := range scheduler.recentRequests {
 		if recentRequest.done && currentTime.After(recentRequest.releaseTime) {
-			toRelease = append(toRelease, i)
+			continue
 		}
+		requestsWaitingFor = append(requestsWaitingFor, recentRequest)
 	}
 	scheduler.recentRequestsLock.RUnlock()
-	if len(toRelease) == 0 {
-		return
-	}
 	scheduler.recentRequestsLock.Lock()
-	for _, index := range toRelease {
-		scheduler.recentRequests = append(
-			scheduler.recentRequests[0:index],
-			scheduler.recentRequests[index+1:]...,
-		)
-	}
+	scheduler.recentRequests = requestsWaitingFor
 	scheduler.recentRequestsLock.Unlock()
 }
