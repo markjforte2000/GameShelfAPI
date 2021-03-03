@@ -28,6 +28,10 @@ func (handler *basicBulkGameHandler) Add(gameFile *game.GameFile) *waitableRespo
 func (handler *basicBulkGameHandler) asyncHandleGame(gameFile *game.GameFile,
 	waitable *waitableResponse) {
 	g := handler.client.GetGameData(gameFile)
+	if g == nil {
+		waitable.lock.Unlock()
+		return
+	}
 	response := new(handlerResponse)
 	response.GameData = g
 	response.Title = gameFile.Title

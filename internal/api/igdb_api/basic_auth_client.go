@@ -58,6 +58,10 @@ func (client *basicAuthClient) GetGameData(gameFile *game.GameFile) *game.Game {
 		client.Reauthenticate()
 	}
 	g := client.parseGameResponse(client.getGameList(gameFile))
+	if g == nil {
+		log.Printf("Could not find game for file: %v", gameFile.FileName)
+		return nil
+	}
 	g.Filename = gameFile.FileName
 	return g
 }

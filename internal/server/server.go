@@ -69,5 +69,6 @@ func (s *gameLibServer) handleGameManagerRequest(w http.ResponseWriter,
 	games := supplier()
 	json := util.GameListToJSON(games)
 	w.Header().Set("Content-Type", "Application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write([]byte(json))
 }
